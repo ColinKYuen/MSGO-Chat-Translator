@@ -1,11 +1,13 @@
-//g++ -Wall -Wextra -std=c++17 main.cpp -o Output -lcurl 
+//g++ -Wall -Wextra -std=c++17 main.cpp -o Output -lcurl
+//x86_64-w64-mingw32-g++ -std=c++17 -I/home/colinyuen/myLib/lib -o OutputTest.exe main.cpp -L/home/colinyuen/myLib/lib -lcurl -static-libgcc -static-libstdc++
+
 #include <curl/curl.h>
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <codecvt>
 #include <filesystem>
-#include <chrono>
-#include <iomanip>
+#include <locale>
 
 using namespace std;
 
@@ -14,33 +16,43 @@ filesystem::path msgoPath;
 filesystem::directory_entry latestLog;
 fstream file;
 
+//Finding Latest File
 void openLatestLog();
 
+//Translation Part
 static size_t writeCallback(void *data, size_t size, size_t nmemb, void* userp);
 void translate(string text);
 string trimBuffer(string buffer);
-string translateText(string text);
-string getURL(string text);
+string getURL(const string text);
 
 int main(){
-    //Things to Do - In Order
-    //Either: Ask User to find MSGO / File search in program
-    //Open Latest File
-    //Go to end of the -> Loop until file is modified / updated -> Read Line (Print left of ":" & Translate Right side)
-    //translate("さっきだれか撃ってるようにみえた");
+    locale::global(locale(""));
     openLatestLog();
-
-    string line;
-    
-    file.open(latestLog.path());
-    if(file.is_open()){
-        while(getline(file, line)){
-            line.length();
-            cout << line << "\n";
+    //"GundamOnline.exe"
+    wifstream fin("test.log", ios::binary);
+    fin.imbue(locale(fin.getloc(), new codecvt_utf16<wchar_t, 0x10ffff, consume_header>));
+    ostringstream out;
+    string utf8_string;
+    fin.seekg(0, fin.end);
+    int length = fin.tellg();
+    fin.seekg(0, fin.beg);
+    cout << "End: " << length << endl;
+    for(wchar_t c; fin.get(c);){
+        wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+        utf8_string.append(convert.to_bytes(c));
+        if(utf8_string.find("：", 10) != string::npos){
+            cout << utf8_string;
+            utf8_string.clear();
         }
-        file.close();
+        if(utf8_string.find("\n") != string::npos){
+            translate(utf8_string);
+            utf8_string.clear();
+            if(fin.tellg() == length){
+                cout << "end of file\n";
+            }
+        }
     }
-
+    
     return 0;
 }
 
@@ -63,7 +75,7 @@ static size_t writeCallback(void *data, size_t size, size_t nmemb, void* userp){
 }
 
 void translate(string text){
-    CURL *curl;
+    CURL* curl;
     CURLcode res;
 
     curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -83,19 +95,24 @@ void translate(string text){
         curl_easy_cleanup(curl);
         cout << trimBuffer(readBuffer) << endl;
     }
-    
     curl_global_cleanup();
 }
 
 string trimBuffer(string buffer){
     int op = buffer.find("[", 0);
-    return buffer.substr(op + 1, buffer.find("]", op) - op - 1);
+    return buffer.substr(op + 2, buffer.find("}", op) - op - 6);
 }
 
-string getURL(string text){
+string getURL(const string text){
+    CURL* curl = curl_easy_init();
+    char* output;
+    if(curl){
+        output = curl_easy_escape(curl, text.c_str(), 0);
+    }
+    
     return "https://translate.yandex.net/api/v1.5/tr.json/translate?key=" 
     + API_Key 
-    + "&text=" + text 
+    + "&text=" + string(output)
     + "&lang=ja-en"
     + "&[options=plain]";
 }
