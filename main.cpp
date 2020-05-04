@@ -14,10 +14,13 @@ using namespace std;
 string API_Key = "trnsl.1.1.20200422T024223Z.8ed8c69f7072557a.e285aeb7a16dd7816a09810c641e040ae835269b";
 filesystem::path msgoPath;
 filesystem::directory_entry latestLog;
-fstream file;
+filesystem::file_time_type lastestUpdate;
+int length;
 
-//Finding Latest File
+//Finding Latest File & Reading
+void readConfig();
 void openLatestLog();
+void readFile();
 
 //Translation Part
 static size_t writeCallback(void *data, size_t size, size_t nmemb, void* userp);
@@ -26,17 +29,47 @@ string trimBuffer(string buffer);
 string getURL(const string text);
 
 int main(){
+    /*
+
+        If(MSGO is not open){
+            While MSGO is not open{
+                Wait
+            }
+            openLatestLog();
+        }
+        
+    */
+    
+    return 0;
+}
+
+void readConfig(){
+
+}
+
+void openLatestLog(){
+    filesystem::path path = msgoPath / "Chat";
+    for(const auto& entry : filesystem::directory_iterator(path)){
+        latestLog = entry;
+    }
+
+    for(const auto& entry : filesystem::directory_iterator(path)){
+        if(entry.last_write_time() > filesystem::last_write_time(latestLog.path())){
+            latestLog = entry;
+        }
+    }
+}
+
+void readFile(){
     locale::global(locale(""));
-    openLatestLog();
-    //"GundamOnline.exe"
-    wifstream fin("test.log", ios::binary);
+    wifstream fin(/*latestLog.path()*/"test.log", ios::binary);
     fin.imbue(locale(fin.getloc(), new codecvt_utf16<wchar_t, 0x10ffff, consume_header>));
     ostringstream out;
     string utf8_string;
+    int prevLength = length;
     fin.seekg(0, fin.end);
-    int length = fin.tellg();
-    fin.seekg(0, fin.beg);
-    cout << "End: " << length << endl;
+    length = fin.tellg();
+    fin.seekg(0, prevLength);
     for(wchar_t c; fin.get(c);){
         wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
         utf8_string.append(convert.to_bytes(c));
@@ -47,24 +80,6 @@ int main(){
         if(utf8_string.find("\n") != string::npos){
             translate(utf8_string);
             utf8_string.clear();
-            if(fin.tellg() == length){
-                cout << "end of file\n";
-            }
-        }
-    }
-    
-    return 0;
-}
-
-void openLatestLog(){
-    filesystem::path path = "Chat";
-    for(const auto& entry : filesystem::directory_iterator(path)){
-        latestLog = entry;
-    }
-
-    for(const auto& entry : filesystem::directory_iterator(path)){
-        if(entry.last_write_time() > filesystem::last_write_time(latestLog.path())){
-            latestLog = entry;
         }
     }
 }
