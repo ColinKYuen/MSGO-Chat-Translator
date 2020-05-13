@@ -1,5 +1,8 @@
 //g++ -Wall -Wextra -std=c++17 main.cpp -o Output -lcurl
-//x86_64-w64-mingw32-g++ -std=c++17 -I/home/colinyuen/myLib/include -o OutputTest.exe main.cpp -L/home/colinyuen/myLib/lib -DCURL_STATICLIB -static -lcurl -static-libstdc++
+//x86_64-w64-mingw32-g++ -std=c++17 -I/home/colinyuen/myLib/include -o OutputTest.exe main.cpp -L/home/colinyuen/myLib/lib -DCURL_STATICLIB -lcurl -static-libstdc++
+//x86_64-w64-mingw32-g++ -std=c++17 -I/home/colinyuen/myLib/include -o OutputTest.exe main.cpp /home/colinyuen/myLib/lib/libcurl.a -static-libstdc++ -static -DCURL_STATICLIB
+//x86_64-w64-mingw32-g++ -std=c++17 -I../../myLib/include" -o OutputTest.exe main.cpp ../../myLib/libcurl.a -static-libstdc++ -static
+
 
 #include <curl/curl.h>
 #include <cstring>
