@@ -1,8 +1,4 @@
 //g++ -Wall -Wextra -std=c++17 main.cpp -o Output -lcurl
-//x86_64-w64-mingw32-g++ -std=c++17 -I/home/colinyuen/myLib/include -o OutputTest.exe main.cpp -L/home/colinyuen/myLib/lib -DCURL_STATICLIB -lcurl -static-libstdc++
-//x86_64-w64-mingw32-g++ -std=c++17 -I/home/colinyuen/myLib/include -o OutputTest.exe main.cpp /home/colinyuen/myLib/lib/libcurl.a -static-libstdc++ -static -DCURL_STATICLIB
-//x86_64-w64-mingw32-g++ -std=c++17 -I../../myLib/include" -o OutputTest.exe main.cpp ../../myLib/libcurl.a -static-libstdc++ -static
-
 
 #include <curl/curl.h>
 #include <cstring>
@@ -11,6 +7,7 @@
 #include <codecvt>
 #include <filesystem>
 #include <locale>
+#include <chrono>
 
 using namespace std;
 
@@ -20,25 +17,75 @@ filesystem::directory_entry latestLog;
 filesystem::file_time_type lastestUpdate;
 int length;
 
+/*
+    Pauses the console
+    Param dur: the seconds the console is paused for
+*/
+void pause(int dur);
+
 //Finding Latest File & Reading
+/*
+    Reads the configuration file to setup the program
+*/
 void readConfig();
+
+/*
+    Searches for the latest Chat Log file
+*/
 void openLatestLog();
+
+/*
+    Opens and reads the latest chat log file
+    Also passes logs to the translator and returns translated message
+*/
 void readFile();
 
 //Translation Part
+/*
+    Testing if the API key is valid
+*/
 bool testAPI();
+
+/*
+    Used to write to a string buffer for CUrl
+*/
 static size_t writeCallback(void *data, size_t size, size_t nmemb, void* userp);
+
+/*
+    Translates the text using CUrl & Yandex API
+    Param text: The input you want translated
+    Return: Translated text
+*/
 string translate(string text);
+
+/*
+    Trims the translated text to only get the usable information for the user
+    Param text: The buffer from CUrl after translation
+    Return: The useful information (The translation part)
+*/
 string trimBuffer(string buffer);
+
+/*
+    Turns the text into a URL for CUrl to interpret 
+    Param text: Text
+    Return: URL which CUrl can use
+*/
 string getURL(const string text);
 
 int main(){
     readConfig();
     openLatestLog();
+    cout << "Welcome Boss Man.\n";
     while(true){
         readFile();
+        pause(1);
     }
     return 0;
+}
+
+void pause(int dur){
+    int temp = time(0) + dur;
+    while(temp > time(0));
 }
 
 void readConfig(){
@@ -58,6 +105,7 @@ void readConfig(){
     if(filesystem::exists(msgoPath / "GundamOnline.exe")){
         Path_Valid = true;
     }
+
     if(testAPI()){
         API_Valid = true;
     }
@@ -70,7 +118,7 @@ void readConfig(){
         out += "Your MSGO Path is invalid\nMake sure the path is ABSOLUTE\n";
     }
     if(!API_Valid || !Path_Valid){
-        cout << out << "Press Enter to continue.\n";
+        cout << out << "Note: There should be no spaces/blankspace in the config file\nPress Enter to continue.\n";
         cin.get();
         exit(0);
     }
@@ -88,6 +136,16 @@ void openLatestLog(){
             latestLog = entry;
         }
     }
+
+    cout << "Latest Path: " << latestLog.path() << "\n";
+
+    locale::global(locale(""));
+    wifstream fin(latestLog.path(), ios::binary);
+    fin.imbue(locale(fin.getloc(), new codecvt_utf16<wchar_t, 0x10ffff, consume_header>));
+    fin.seekg(0, fin.end);
+    length = fin.tellg();
+    cout << length << "\n";
+    fin.close();
 }
 
 void readFile(){
@@ -96,22 +154,36 @@ void readFile(){
     fin.imbue(locale(fin.getloc(), new codecvt_utf16<wchar_t, 0x10ffff, consume_header>));
     ostringstream out;
     string utf8_string;
-    int prevLength = length;
+    wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
+
     fin.seekg(0, fin.end);
-    length = fin.tellg();
-    fin.seekg(prevLength, fin.beg);
+    int newLength = fin.tellg();
+    if(length >= newLength){
+        cout << "Curr: " << length << "\n";
+        fin.close();
+        return;
+    }
+    fin.seekg(length);
+
+    cout << "Begin: " << fin.tellg() << "\n";
+
     for(wchar_t c; fin.get(c);){
-        wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
-        utf8_string.append(convert.to_bytes(c));
-        if(utf8_string.find("：", 10) != string::npos){
+        //cout << showbase << hex << c << '\n';
+        //utf8_string.append(convert.to_bytes(c));
+        if(utf8_string.find(":", 10) != string::npos){
             cout << utf8_string;
             utf8_string.clear();
         }
-        if(utf8_string.find("\n") != string::npos){
-            cout << translate(utf8_string);
+        else if(utf8_string.find("\n") != string::npos/* || fin.tellg() == newLength*/){
+            cout << translate(utf8_string) << "\n";
             utf8_string.clear();
         }
     }
+
+    cout << "New Length: " << newLength << "\n";
+    length = newLength;
+    
+    fin.close();
 }
 
 bool testAPI(){
@@ -135,7 +207,7 @@ string translate(string text){
     curl = curl_easy_init();
     string readBuffer;
     if(curl){
-        
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);        
         curl_easy_setopt(curl, CURLOPT_URL, getURL(text).c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &readBuffer);
