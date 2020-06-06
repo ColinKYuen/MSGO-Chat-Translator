@@ -22,3 +22,5 @@ MSGO_PATH|C:\BNO\GundamOnline
 - Does not have common dictionary (Because I can't read Japanese)
 - Yandex API is slow (but free!)
 - Translations are not completely correct
+- Reads from the beginning of the file everytime
+- Console has some issues displaying some characters
