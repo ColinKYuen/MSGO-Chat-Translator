@@ -143,7 +143,6 @@ void openLatestLog(){
     fin.imbue(locale(fin.getloc(), new codecvt_utf16<wchar_t, 0x10ffff, consume_header>));
     fin.seekg(0, fin.end);
     length = fin.tellg(); 
-    //cout << length << "\n";
     fin.close();
 }
 
@@ -155,7 +154,6 @@ void readFile(){
     string utf8_string;
     wstring_convert<codecvt_utf8_utf16<wchar_t>, wchar_t> convert;
 
-    /*
     fin.seekg(0, fin.end);
     int newLength = fin.tellg();
     if(length >= newLength){
@@ -165,21 +163,16 @@ void readFile(){
     }
     fin.seekg(length - 2, fin.beg);
 
-    cout << "Begin: " << fin.tellg() << "\n";
-    */
-
-   fin.seekg(length);
+    fin.seekg(length);
 
     for(wchar_t c; fin.get(c);){
-        //cout << showbase << hex << c << '\n';
         utf8_string.append(convert.to_bytes(c));
         if(utf8_string.find(":", 10) != string::npos){
             cout << utf8_string;
             utf8_string.clear();
         }
-        else if(utf8_string.find("\n") != string::npos/* || fin.tellg() == newLength*/){
+        else if(utf8_string.find("\n") != string::npos || fin.tellg() == newLength){
             cout << translate(utf8_string) << "\n";
-            //cout << utf8_string << "\n";
             utf8_string.clear();
         }
     }
@@ -187,9 +180,6 @@ void readFile(){
     if(fin.eof){
         length = fin.tellg();
     }
-
-    //cout << "New Length: " << newLength << "\n";
-    //length = newLength;
     
     fin.close();
 }
